@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tebak Kata - Metamorfosis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Patrick Hand', cursive;
+            background-color: #233e2b; /* Warna hijau papan tulis */
+            background-image: 
+                radial-gradient(circle, rgba(255,255,255,0.03) 2px, transparent 2.5px),
+                radial-gradient(circle, rgba(255,255,255,0.03) 2px, transparent 2.5px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            min-height: 100vh;
+            color: #f8f9fa;
+            overflow-x: hidden;
+        }
+
+        /* Papan Tulis dengan Bingkai Kayu */
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.15);
+            border: 12px solid #5c4033; /* Bingkai Kayu */
+            border-radius: 10px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        /* Efek Tulisan Kapur */
+        .chalk-text {
+            color: #f8f9fa;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5), 0 0 5px rgba(255,255,255,0.4);
+        }
+        .chalk-text-yellow {
+            color: #fde047;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5), 0 0 5px rgba(253,224,71,0.3);
+        }
+        .chalk-text-green {
+            color: #86efac;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5), 0 0 5px rgba(134,239,172,0.3);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Huruf Kapur */
+        .letter-box {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 45px;
+            height: 55px;
+            margin: 4px;
+            font-size: 32px;
+            text-transform: uppercase;
+            border-bottom: 4px dashed rgba(255, 255, 255, 0.6);
+            color: #f8f9fa;
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        @media (min-width: 768px) {
+            .letter-box {
+                width: 60px;
+                height: 70px;
+                font-size: 42px;
+                margin: 8px;
+            }
+        }
+
+        /* Keyboard Kapur */
+        .key-btn {
+            background-color: transparent;
+            color: #f8f9fa;
+            font-size: 24px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 3px 3px 0 rgba(255,255,255,0.2);
+            transition: all 0.1s;
+            cursor: pointer;
+            user-select: none;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .key-btn:active:not(:disabled) {
+            transform: translateY(3px) translateX(3px);
+            box-shadow: 0 0 0 transparent;
+        }
+        
+        .key-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.3;
+            transform: translateY(2px);
+            box-shadow: 0 0 0;
+        }
+        
+        .key-correct {
+            border-color: #86efac !important;
+            color: #86efac !important;
+            box-shadow: 2px 2px 0 #86efac !important;
+        }
+        
+        .key-wrong {
+            border-color: #fca5a5 !important;
+            color: #fca5a5 !important;
+            box-shadow: 2px 2px 0 #fca5a5 !important;
+            text-decoration: line-through;
+        }
+
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Tombol Gaya Kapur Dihapus/Kotak */
+        .btn-chalk {
+            background: rgba(255,255,255,0.1);
+            border: 3px solid #f8f9fa;
+            color: #f8f9fa;
+            transition: all 0.2s;
+        }
+        .btn-chalk:hover {
+            background: #f8f9fa;
+            color: #233e2b;
+        }
+
+        /* Input Kapur */
+        .chalk-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px dashed rgba(255, 255, 255, 0.6);
+            color: #f8f9fa;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1.8rem;
+            outline: none;
+        }
+        .chalk-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        .chalk-input:focus {
+            border-color: #fde047;
+            box-shadow: 0 0 10px rgba(253, 224, 71, 0.3);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div id="appContainer" class="w-full max-w-4xl relative">
+        
+        <!-- 1. MAIN MENU -->
+        <div id="viewMenu" class="glass-panel p-8 text-center animate-pop flex flex-col items-center">
+            <div class="text-6xl mb-2">🦋🐸🦗</div>
+            <h1 class="text-4xl md:text-6xl font-bold chalk-text-yellow mb-2 leading-tight">TEBAK KATA EDUKASI</h1>
+            <h2 class="text-2xl md:text-3xl text-gray-300 mb-6 chalk-text">Metamorfosis & Siklus Hidup Makhluk Hidup</h2>
+            
+            <!-- Input Nama Pemain -->
+            <div class="w-full max-w-md mb-6">
+                <label for="playerNameInput" class="block text-2xl chalk-text-yellow mb-2 font-bold">MASUKKAN NAMA PEMAIN:</label>
+                <input type="text" id="playerNameInput" maxlength="20" placeholder="Ketik nama kamu di sini..." class="chalk-input w-full px-5 py-3 rounded-xl text-center shadow-inner">
+                <p id="nameErrorMsg" class="text-red-300 text-lg mt-1 hidden">⚠️ Silakan masukkan nama terlebih dahulu!</p>
+            </div>
+
+            <div class="bg-black/30 p-5 rounded-xl text-left w-full max-w-2xl mb-6 border-2 border-dashed border-gray-400">
+                <h3 class="text-2xl mb-1 chalk-text-green">Aturan Bermain:</h3>
+                <ul class="list-disc pl-5 space-y-1 text-xl text-gray-200">
+                    <li>Terdapat <b>10 soal</b> yang harus dijawab.</li>
+                    <li>Tebak kata rahasia berdasarkan <b>petunjuk (clue)</b> yang diberikan.</li>
+                    <li>Kamu punya <b>6 nyawa (kesempatan salah)</b> untuk setiap soal.</li>
+                    <li>Jawaban benar mendapat <b>10 Poin</b>.</li>
+                </ul>
+            </div>
+            
+            <button onclick="startGame()" class="btn-chalk text-3xl font-bold py-3 px-10 rounded-lg shadow-lg active:scale-95">
+                MULAI BELAJAR
+            </button>
+        </div>
+
+        <!-- 2. GAME VIEW -->
+        <div id="viewGame" class="glass-panel p-4 md:p-8 animate-pop hidden flex-col">
+            <!-- Header (Stats & Player Name) -->
+            <div class="flex flex-wrap justify-between items-center bg-black/20 p-4 rounded-xl mb-6 border border-white/20 gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">👤</span>
+                    <span id="displayPlayerName" class="text-2xl md:text-3xl font-bold chalk-text-yellow max-w-[150px] md:max-w-[200px] truncate">Pemain</span>
+                </div>
+                <div class="flex justify-around items-center gap-4 md:gap-8">
+                    <div class="flex flex-col items-center">
+                        <span class="text-gray-400 text-base md:text-lg">SOAL</span>
+                        <span id="displaySoalNum" class="text-2xl md:text-3xl font-bold chalk-text-yellow">1/10</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-gray-400 text-base md:text-lg">SKOR</span>
+                        <span id="displayScore" class="text-3xl md:text-4xl font-bold chalk-text-green">0</span>
+                    </div>
+                    <div class="flex flex-col items-center relative">
+                        <span class="text-gray-400 text-base md:text-lg">NYAWA</span>
+                        <div id="displayLives" class="text-xl md:text-2xl tracking-widest drop-shadow-md">❤️❤️❤️❤️❤️❤️</div>
+                    </div>
+                    <button id="btnMute" onclick="toggleMute()" class="text-2xl md:text-3xl hover:scale-110 transition-transform" title="Matikan/Nyalakan Suara">
+                        🔊
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hangman Drawing Area -->
+            <div class="flex justify-center mb-6">
+                <div class="bg-black/20 p-4 rounded-2xl border-2 border-dashed border-white/30">
+                    <svg viewBox="0 0 200 250" class="w-40 h-48 md:w-48 md:h-56 drop-shadow-[0_0_4px_rgba(255,255,255,0.4)]">
+                        <!-- Gallows (Tiang Gantungan - Kapur Putih) -->
+                        <g stroke="#f8f9fa" stroke-width="5" stroke-linecap="round" fill="none">
+                            <line x1="40" y1="230" x2="120" y2="230" /> <!-- Base -->
+                            <line x1="80" y1="230" x2="80" y2="20" />  <!-- Pole -->
+                            <line x1="80" y1="20" x2="150" y2="20" />  <!-- Top -->
+                            <line x1="150" y1="20" x2="150" y2="50" stroke-dasharray="4" />  <!-- Tali putus-putus -->
+                        </g>
+                        <!-- Body Parts (Kapur Merah Muda) -->
+                        <g stroke="#fca5a5" stroke-width="5" stroke-linecap="round" fill="none">
+                            <!-- 1. Head -->
+                            <circle id="hm-part-1" cx="150" cy="70" r="20" class="opacity-0 transition-opacity duration-300" />
+                            <!-- 2. Body -->
+                            <line id="hm-part-2" x1="150" y1="90" x2="150" y2="150" class="opacity-0 transition-opacity duration-300" />
+                            <!-- 3. Left Arm -->
+                            <line id="hm-part-3" x1="150" y1="105" x2="120" y2="135" class="opacity-0 transition-opacity duration-300" />
+                            <!-- 4. Right Arm -->
+                            <line id="hm-part-4" x1="150" y1="105" x2="180" y2="135" class="opacity-0 transition-opacity duration-300" />
+                            <!-- 5. Left Leg -->
+                            <line id="hm-part-5" x1="150" y1="150" x2="120" y2="190" class="opacity-0 transition-opacity duration-300" />
+                            <!-- 6. Right Leg -->
+                            <line id="hm-part-6" x1="150" y1="150" x2="180" y2="190" class="opacity-0 transition-opacity duration-300" />
+                        </g>
+                        <!-- Dead Face -->
+                        <g id="hm-face" stroke="#fca5a5" stroke-width="3" stroke-linecap="round" fill="none" class="opacity-0 transition-opacity duration-300">
+                            <!-- Mata X -->
+                            <line x1="143" y1="65" x2="147" y2="69" />
+                            <line x1="147" y1="65" x2="143" y2="69" />
+                            <line x1="153" y1="65" x2="157" y2="69" />
+                            <line x1="157" y1="65" x2="153" y2="69" />
+                            <!-- Mulut Sedih -->
+                            <path d="M 144 78 Q 150 74 156 78" />
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Clue Area -->
+            <div class="bg-black/30 border-l-4 border-yellow-400 p-6 rounded-r-xl mb-8">
+                <h3 class="chalk-text-yellow text-2xl mb-1">PETUNJUK:</h3>
+                <p id="displayClue" class="text-2xl md:text-3xl chalk-text"></p>
+            </div>
+
+            <!-- Word Area -->
+            <div class="text-center mb-10 min-h-[80px]" id="wordContainer">
+                <!-- Letter boxes injected here -->
+            </div>
+
+            <!-- Keyboard Area -->
+            <div id="keyboardContainer" class="flex flex-wrap justify-center gap-2 md:gap-3 max-w-3xl mx-auto">
+                <!-- Keys injected here -->
+            </div>
+        </div>
+
+        <!-- 3. EXPLANATION MODAL -->
+        <div id="modalExplanation" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-2xl p-8 text-center animate-pop flex flex-col items-center relative">
+                
+                <div id="resultIcon" class="text-7xl mb-2 drop-shadow-lg">🎉</div>
+                <h2 id="resultTitle" class="text-5xl font-bold mb-4 chalk-text-green">BENAR!</h2>
+                
+                <div class="bg-white/10 py-3 px-8 rounded-lg mb-6 border border-dashed border-white/50 inline-block">
+                    <span class="text-gray-300 text-xl mr-2">Jawaban:</span>
+                    <span id="resultWord" class="text-4xl font-bold chalk-text tracking-widest">KEPOMPONG</span>
+                </div>
+                
+                <div class="bg-black/40 p-6 rounded-xl w-full mb-8 text-left border-l-4 border-blue-400">
+                    <h3 class="text-2xl chalk-text mb-2 text-blue-300">Penjelasan Edukatif:</h3>
+                    <p id="resultExplanation" class="text-xl text-gray-200 leading-relaxed"></p>
+                </div>
+                
+                <button id="btnNext" onclick="nextQuestion()" class="btn-chalk text-2xl py-3 px-8 rounded-lg active:scale-95 w-full md:w-auto">
+                    LANJUT KE SOAL BERIKUTNYA
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. END SCREEN -->
+        <div id="viewResult" class="glass-panel p-6 md:p-8 text-center animate-pop hidden flex-col items-center">
+            <div class="text-6xl md:text-7xl mb-2 drop-shadow-lg">🏆</div>
+            <h1 class="text-4xl md:text-6xl font-bold chalk-text-yellow mb-1">HASIL AKHIR PERMAINAN</h1>
+            <h2 id="finalPlayerGreeting" class="text-2xl md:text-3xl text-gray-200 mb-6 chalk-text">Selamat Budi!</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-6">
+                <!-- Ringkasan Skor -->
+                <div class="bg-black/30 p-6 rounded-2xl border-2 border-dashed border-white/30 flex flex-col items-center justify-center">
+                    <p class="text-gray-300 text-2xl mb-1 uppercase">Nilai Kamu</p>
+                    <div id="finalScore" class="text-7xl md:text-8xl font-bold chalk-text-green mb-2">100</div>
+                    <p id="finalEvaluation" class="text-xl md:text-2xl chalk-text"></p>
+                </div>
+
+                <!-- Leaderboard (Papan Skor) -->
+                <div class="bg-black/30 p-6 rounded-2xl border-2 border-dashed border-white/30 flex flex-col text-left">
+                    <h3 class="text-2xl chalk-text-yellow font-bold mb-3 border-b border-white/20 pb-2 flex items-center justify-between">
+                        <span>PAPAN SKOR PEMAIN</span>
+                        <span class="text-lg font-normal text-gray-300">Peringkat</span>
+                    </h3>
+                    <div id="leaderboardList" class="overflow-y-auto max-h-48 space-y-2 pr-1">
+                        <!-- Items injected here -->
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="resetGame()" class="btn-chalk text-2xl py-3 px-10 rounded-lg active:scale-95">
+                MAIN LAGI
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA SOAL ---
+        const questions = [
+            {
+                word: "KEPOMPONG",
+                clue: "Tahap diam/pupa dalam metamorfosis kupu-kupu sebelum menjadi dewasa.",
+                exp: "Kepompong (pupa) adalah fase transisi di mana ulat membungkus dirinya untuk merombak struktur tubuh menjadi kupu-kupu dewasa."
+            },
+            {
+                word: "NIMFA",
+                clue: "Hewan muda pada metamorfosis tidak sempurna yang bentuknya mirip hewan dewasa tetapi lebih kecil.",
+                exp: "Nimfa adalah tahapan serangga muda (seperti pada belalang dan kecoak) yang belum memiliki sayap sempurna dan organ reproduksi matang."
+            },
+            {
+                word: "IMAGO",
+                clue: "Tahap akhir atau fase dewasa dari siklus hidup serangga.",
+                exp: "Imago adalah tingkatan dewasa pada serangga yang sudah memiliki organ reproduksi matang dan siap berkembang biak."
+            },
+            {
+                word: "KATAK",
+                clue: "Amfibi yang mengalami perubahan dari berudu bernapas dengan insang menjadi hewan darat bernapas dengan paru-paru.",
+                exp: "Katak mengalami metamorfosis dari telur -> berudu (di air) -> katak muda -> katak dewasa (di darat)."
+            },
+            {
+                word: "CAPUNG",
+                clue: "Serangga penerbang yang mengalami metamorfosis tidak sempurna dengan tahap nimfa yang hidup di air.",
+                exp: "Capung tidak melalui fase kepompong; telurnya menetas menjadi nimfa akuatik sebelum akhirnya keluar dari air menjadi capung dewasa."
+            },
+            {
+                word: "NYAMUK",
+                clue: "Serangga yang bertelur di air dan fase larvanya dikenal dengan sebutan jentik-jentik.",
+                exp: "Nyamuk mengalami metamorfosis sempurna: telur -> larva (jentik) -> pupa -> nyamuk dewasa."
+            },
+            {
+                word: "LARVA",
+                clue: "Bentuk muda serangga setelah menetas dari telur pada metamorfosis sempurna (sering berbentuk seperti cacing/ulat).",
+                exp: "Larva fokus utamanya adalah makan dan tumbuh sebelum memasuki fase pupa."
+            },
+            {
+                word: "BELALANG",
+                clue: "Serangga pemakan tumbuhan yang mengalami metamorfosis tidak sempurna (Telur -> Nimfa -> Imago).",
+                exp: "Belalang tidak mengalami fase larva atau kepompong; belalang muda langsung menyerupai bentuk belalang dewasa tanpa sayap."
+            },
+            {
+                word: "LALAT",
+                clue: "Serangga yang fase larvanya sering disebut belatung.",
+                exp: "Lalat berkembang melalui metamorfosis sempurna dari telur menjadi larva (belatung), lalu pupa, dan menjadi lalat dewasa."
+            },
+            {
+                word: "BERUDU",
+                clue: "Tahap awal katak setelah menetas dari telur yang bernapas menggunakan insang dan memiliki ekor.",
+                exp: "Berudu (kecebong) hidup sepenuhnya di air sebelum tumbuh kaki dan paru-parunya berkembang menjadi katak."
+            }
+        ];
+
+        // --- GAME STATE ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+        const maxMistakes = 6;
+        let mistakes = 0;
+        let guessedLetters = new Set();
+        let currentWord = "";
+        let isWaitingForNext = false;
+        let playerName = "";
+        let leaderboard = [];
+
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+        // --- AUDIO STATE (Tone.js) ---
+        let audioInitialized = false;
+        let isMuted = false;
+        let bgmSynth, sfxSynth, bgmSequence;
+
+        // --- DOM ELEMENTS ---
+        const viewMenu = document.getElementById('viewMenu');
+        const viewGame = document.getElementById('viewGame');
+        const viewResult = document.getElementById('viewResult');
+        const modalExplanation = document.getElementById('modalExplanation');
+
+        const playerNameInput = document.getElementById('playerNameInput');
+        const nameErrorMsg = document.getElementById('nameErrorMsg');
+        const displayPlayerName = document.getElementById('displayPlayerName');
+
+        const displaySoalNum = document.getElementById('displaySoalNum');
+        const displayScore = document.getElementById('displayScore');
+        const displayLives = document.getElementById('displayLives');
+        const displayClue = document.getElementById('displayClue');
+        const wordContainer = document.getElementById('wordContainer');
+        const keyboardContainer = document.getElementById('keyboardContainer');
+        const btnMute = document.getElementById('btnMute');
+
+        // --- AUDIO SETUP ---
+        async function initAudio() {
+            if (audioInitialized) return;
+            await Tone.start();
+            
+            // Background Music Synth
+            bgmSynth = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.1, decay: 0.2, sustain: 0.2, release: 1 }
+            }).toDestination();
+            bgmSynth.volume.value = -18; // Volume pelan untuk backsound
+
+            // Sound Effects Synth
+            sfxSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.05, decay: 0.1, sustain: 0.1, release: 0.5 }
+            }).toDestination();
+            sfxSynth.volume.value = -8;
+
+            // Membuat melodi ceria
+            const notes = ["C4", "E4", "G4", "A4", "G4", "E4", "D4", "G3"];
+            bgmSequence = new Tone.Sequence((time, note) => {
+                bgmSynth.triggerAttackRelease(note, "8n", time);
+            }, notes, "4n");
+
+            Tone.Transport.bpm.value = 130;
+            audioInitialized = true;
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            Tone.Destination.mute = isMuted;
+            btnMute.innerText = isMuted ? "🔇" : "🔊";
+            btnMute.classList.toggle('bg-red-100', isMuted);
+        }
+
+        function playSFX(type) {
+            if (!audioInitialized || isMuted) return;
+            const now = Tone.now();
+            if (type === 'correct') {
+                sfxSynth.triggerAttackRelease(["C5", "E5", "G5"], "16n", now);
+            } else if (type === 'wrong') {
+                sfxSynth.triggerAttackRelease("C3", "8n", now);
+                sfxSynth.triggerAttackRelease("G2", "4n", now + 0.15);
+            } else if (type === 'win') {
+                sfxSynth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "4n", now);
+            } else if (type === 'lose') {
+                sfxSynth.triggerAttackRelease("D3", "8n", now);
+                sfxSynth.triggerAttackRelease("Db3", "8n", now + 0.2);
+                sfxSynth.triggerAttackRelease("C3", "2n", now + 0.4);
+            }
+        }
+
+        // --- INITIALIZATION ---
+        function createKeyboard() {
+            keyboardContainer.innerHTML = '';
+            alphabet.forEach(letter => {
+                const btn = document.createElement('button');
+                btn.className = 'key-btn w-10 h-12 md:w-14 md:h-16 flex items-center justify-center';
+                btn.innerText = letter;
+                btn.id = `key-${letter}`;
+                btn.onclick = () => handleGuess(letter);
+                keyboardContainer.appendChild(btn);
+            });
+        }
+
+        // --- GAME LOGIC ---
+        async function startGame() {
+            // Validasi Input Nama
+            const nameValue = playerNameInput.value.trim();
+            if (!nameValue) {
+                nameErrorMsg.classList.remove('hidden');
+                playerNameInput.focus();
+                return;
+            }
+            nameErrorMsg.classList.add('hidden');
+            playerName = nameValue;
+            displayPlayerName.innerText = playerName;
+
+            // Memulai Audio Engine saat user pertama kali interaksi (klik Mulai)
+            await initAudio();
+            bgmSequence.start(0);
+            Tone.Transport.start();
+
+            currentQuestionIndex = 0;
+            score = 0;
+            viewMenu.classList.add('hidden');
+            viewResult.classList.add('hidden');
+            viewGame.classList.remove('hidden');
+            viewGame.classList.add('flex');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            isWaitingForNext = false;
+            mistakes = 0;
+            guessedLetters.clear();
+            
+            const q = questions[currentQuestionIndex];
+            currentWord = q.word.toUpperCase();
+            
+            // Update UI
+            displaySoalNum.innerText = `${currentQuestionIndex + 1}/10`;
+            displayScore.innerText = score;
+            updateLivesDisplay();
+            displayClue.innerText = q.clue;
+            
+            createKeyboard();
+            renderWord();
+        }
+
+        function renderWord() {
+            wordContainer.innerHTML = '';
+            for (let i = 0; i < currentWord.length; i++) {
+                const letter = currentWord[i];
+                const span = document.createElement('span');
+                span.className = 'letter-box';
+                
+                // Show letter if guessed, otherwise show blank
+                if (guessedLetters.has(letter)) {
+                    span.innerText = letter;
+                } else {
+                    span.innerText = '';
+                }
+                wordContainer.appendChild(span);
+            }
+        }
+
+        function updateLivesDisplay() {
+            const heartsLeft = maxMistakes - mistakes;
+            let display = '';
+            for(let i=0; i<heartsLeft; i++) display += '❤️';
+            for(let i=0; i<mistakes; i++) display += '🖤'; // Broken/used hearts
+            displayLives.innerText = display;
+            
+            updateHangmanGraphic();
+        }
+
+        function updateHangmanGraphic() {
+            for (let i = 1; i <= 6; i++) {
+                const part = document.getElementById(`hm-part-${i}`);
+                if (part) {
+                    if (i <= mistakes) {
+                        part.classList.remove('opacity-0');
+                    } else {
+                        part.classList.add('opacity-0');
+                    }
+                }
+            }
+            
+            // Tampilkan wajah "kalah" jika nyawa sudah habis (kesalahan == 6)
+            const face = document.getElementById('hm-face');
+            if (face) {
+                if (mistakes >= maxMistakes) {
+                    face.classList.remove('opacity-0');
+                } else {
+                    face.classList.add('opacity-0');
+                }
+            }
+        }
+
+        function handleGuess(letter) {
+            if (isWaitingForNext || guessedLetters.has(letter)) return;
+            
+            guessedLetters.add(letter);
+            const btn = document.getElementById(`key-${letter}`);
+            btn.disabled = true;
+
+            if (currentWord.includes(letter)) {
+                // Correct guess
+                btn.classList.add('key-correct');
+                playSFX('correct');
+                renderWord();
+                checkWin();
+            } else {
+                // Wrong guess
+                btn.classList.add('key-wrong');
+                playSFX('wrong');
+                mistakes++;
+                updateLivesDisplay();
+                checkLose();
+            }
+        }
+
+        function checkWin() {
+            // Check if all letters in word have been guessed
+            const won = currentWord.split('').every(l => guessedLetters.has(l));
+            if (won) {
+                isWaitingForNext = true;
+                score += 10;
+                displayScore.innerText = score;
+                playSFX('win');
+                setTimeout(() => showExplanation(true), 800);
+            }
+        }
+
+        function checkLose() {
+            if (mistakes >= maxMistakes) {
+                isWaitingForNext = true;
+                playSFX('lose');
+                setTimeout(() => showExplanation(false), 800);
+            }
+        }
+
+        function showExplanation(isWin) {
+            const q = questions[currentQuestionIndex];
+            
+            document.getElementById('resultWord').innerText = currentWord;
+            document.getElementById('resultExplanation').innerText = q.exp;
+            
+            const title = document.getElementById('resultTitle');
+            const icon = document.getElementById('resultIcon');
+            
+            if (isWin) {
+                title.innerText = "HEBAT, JAWABAN BENAR!";
+                title.className = "text-4xl font-black mb-2 text-green-600";
+                icon.innerText = "🌟";
+            } else {
+                title.innerText = "YAH, NYAWA HABIS!";
+                title.className = "text-4xl font-black mb-2 text-red-500";
+                icon.innerText = "💔";
+            }
+            
+            // Check if last question
+            const btnNext = document.getElementById('btnNext');
+            if (currentQuestionIndex === questions.length - 1) {
+                btnNext.innerText = "LIHAT HASIL AKHIR";
+                btnNext.classList.replace('bg-blue-500', 'bg-yellow-500');
+                btnNext.classList.replace('hover:bg-blue-600', 'hover:bg-yellow-600');
+                btnNext.classList.replace('shadow-[0_6px_0_#2b6cb0]', 'shadow-[0_6px_0_#d69e2e]');
+            } else {
+                btnNext.innerText = "LANJUT KE SOAL BERIKUTNYA";
+                // Reset button style if it was changed
+                btnNext.className = "bg-blue-500 hover:bg-blue-600 text-white text-xl md:text-2xl font-black py-4 px-8 md:px-12 rounded-full shadow-[0_6px_0_#2b6cb0] active:shadow-none active:translate-y-[6px] transition-all w-full md:w-auto mt-4";
+            }
+
+            modalExplanation.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            modalExplanation.classList.add('hidden');
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < questions.length) {
+                loadQuestion();
+            } else {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            viewGame.classList.add('hidden');
+            viewGame.classList.remove('flex');
+            
+            // Simpan Skor Pemain ke Leaderboard
+            leaderboard.push({ name: playerName, score: score });
+            // Urutkan dari nilai tertinggi ke terkecil
+            leaderboard.sort((a, b) => b.score - a.score);
+
+            document.getElementById('finalPlayerGreeting').innerText = `Hebat ${playerName}, kamu telah menyelesaikan permainan!`;
+            document.getElementById('finalScore').innerText = score;
+            
+            let evalText = "";
+            if (score === 100) evalText = "Sempurna! Kamu adalah ahli metamorfosis! 🏅";
+            else if (score >= 70) evalText = "Luar biasa! Pengetahuanmu sangat bagus! 👍";
+            else if (score >= 40) evalText = "Cukup baik, mari tingkatkan lagi belajarmu! 📚";
+            else evalText = "Tetap semangat belajar tentang siklus hidup hewan ya! 💪";
+            
+            document.getElementById('finalEvaluation').innerText = evalText;
+
+            // Render Leaderboard
+            renderLeaderboard();
+            
+            viewResult.classList.remove('hidden');
+            viewResult.classList.add('flex');
+        }
+
+        function renderLeaderboard() {
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+            
+            leaderboard.forEach((entry, idx) => {
+                const item = document.createElement('div');
+                const isCurrent = entry.name === playerName && entry.score === score;
+                item.className = `flex justify-between items-center p-2 rounded-lg text-lg ${isCurrent ? 'bg-yellow-400/20 border border-yellow-400/50' : 'bg-black/20'}`;
+                
+                let badge = `${idx + 1}.`;
+                if (idx === 0) badge = '🥇';
+                else if (idx === 1) badge = '🥈';
+                else if (idx === 2) badge = '🥉';
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="w-6 text-center">${badge}</span>
+                        <span class="${isCurrent ? 'chalk-text-yellow font-bold' : 'chalk-text'} truncate">${entry.name}</span>
+                    </div>
+                    <span class="font-bold chalk-text-green ml-2">${entry.score} Pts</span>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function resetGame() {
+            viewResult.classList.add('hidden');
+            viewResult.classList.remove('flex');
+            viewMenu.classList.remove('hidden');
+            playerNameInput.value = '';
+            // Hentikan musik saat kembali ke menu utama
+            Tone.Transport.stop();
+        }
+
+        // --- KEYBOARD SUPPORT (Physical Keyboard) ---
+        window.addEventListener('keydown', (e) => {
+            if (isWaitingForNext || viewGame.classList.contains('hidden')) return;
+            
+            const key = e.key.toUpperCase();
+            if (alphabet.includes(key)) {
+                handleGuess(key);
+            }
+        });
+
+    </script>
+</body>
+</html>
